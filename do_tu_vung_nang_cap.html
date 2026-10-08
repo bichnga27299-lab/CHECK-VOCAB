@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dò từ vựng nâng cấp</title>
+<style>
+*{box-sizing:border-box} body{font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:18px;background:#fff7fb;color:#333}
+h1{text-align:center;color:#d84b88;margin:8px 0 18px}.card{background:white;padding:18px;border-radius:18px;box-shadow:0 3px 14px #ddd;margin-bottom:15px}
+textarea{width:100%;height:190px;font-size:18px;padding:12px;border:2px solid #f0a8c8;border-radius:12px}
+.row{display:flex;gap:12px;flex-wrap:wrap}.field{flex:1;min-width:130px}label{display:block;margin:10px 0 5px;font-weight:bold}input,select{width:100%;padding:9px;font-size:16px;border:1px solid #ccc;border-radius:9px}
+button{padding:12px 18px;margin:8px 4px 0 0;border:0;border-radius:12px;font-size:16px;cursor:pointer;background:#e95b96;color:white}.stop{background:#777}.random{background:#7c67d9}
+#current{text-align:center;font-size:26px;font-weight:bold;min-height:42px;color:#555}
+.hiddenNote{text-align:center;color:#999;font-size:14px}
+</style>
+</head>
+<body>
+<h1>🎧 DÒ TỪ VỰNG</h1>
+
+<div class="card">
+<p><b>Dán list từ — mỗi từ/cụm từ một dòng.</b></p>
+<textarea id="words">messaging on your phone
+look after
+being with people
+collecting stamps
+play an instrument</textarea>
+
+<div class="row">
+<div class="field"><label>Số lần đọc</label><input id="repeat" type="number" value="3" min="1" max="5"></div>
+<div class="field"><label>Nghỉ giữa từ (giây)</label><input id="pause" type="number" value="3" min="0" max="20" step="0.5"></div>
+<div class="field"><label>Tốc độ</label><input id="rate" type="number" value="0.85" min="0.4" max="1.5" step="0.05"></div>
+</div>
+
+<div class="row">
+<div class="field"><label>Giọng</label>
+<select id="voice"><option value="en-US">🇺🇸 English (US)</option><option value="en-GB">🇬🇧 English (UK)</option></select>
+</div>
+<div class="field"><label>Thứ tự</label>
+<select id="order"><option value="normal">Theo thứ tự</option><option value="random">🎲 Trộn ngẫu nhiên</option></select>
+</div>
+</div>
+
+<button onclick="start()">▶ START</button>
+<button class="stop" onclick="stop()">■ STOP</button>
+<button class="random" onclick="shufflePreview()">🎲 Trộn list</button>
+</div>
+
+<div class="card">
+<div id="current">Sẵn sàng</div>
+<p class="hiddenNote">🔒 Từ đang dò được ẩn khỏi màn hình — HS chỉ nghe và viết.</p>
+</div>
+
+<script>
+let stopped=false,timer=null;
+
+function sleep(ms){return new Promise(r=>timer=setTimeout(r,ms));}
+
+function getVoice(lang){
+ const voices=speechSynthesis.getVoices();
+ return voices.find(v=>v.lang===lang) || voices.find(v=>v.lang.startsWith(lang.split('-')[0])) || null;
+}
+
+function speak(text,rate,lang){
+ return new Promise(resolve=>{
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang=lang; u.rate=rate;
+  const v=getVoice(lang); if(v) u.voice=v;
+  u.onend=resolve; u.onerror=resolve;
+  speechSynthesis.speak(u);
+ });
+}
+
+function getList(){
+ return document.getElementById('words').value.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+}
+
+async function start(){
+ stopped=false;
+ let arr=getList();
+ if(!arr.length){document.getElementById('current').textContent='⚠️ Chưa có từ';return;}
+ if(document.getElementById('order').value==='random') arr.sort(()=>Math.random()-0.5);
+
+ const n=+document.getElementById('repeat').value;
+ const p=+document.getElementById('pause').value*1000;
+ const rate=+document.getElementById('rate').value;
+ const lang=document.getElementById('voice').value;
+
+ for(let i=0;i<arr.length&&!stopped;i++){
+   document.getElementById('current').textContent='🔊 Từ '+(i+1)+' / '+arr.length;
+   for(let j=0;j<n&&!stopped;j++){
+     await speak(arr[i],rate,lang);
+     if(j<n-1) await sleep(800);
+   }
+   if(!stopped) await sleep(p);
+ }
+ if(!stopped) document.getElementById('current').textContent='✅ Hoàn thành!';
+}
+
+function stop(){
+ stopped=true; clearTimeout(timer); speechSynthesis.cancel();
+ document.getElementById('current').textContent='⏹ Đã dừng';
+}
+
+function shufflePreview(){
+ let arr=getList();
+ arr.sort(()=>Math.random()-0.5);
+ document.getElementById('words').value=arr.join('\n');
+}
+</script>
+</body>
+</html>
